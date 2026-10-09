@@ -6058,7 +6058,7 @@ const syncToCloud = async () => {
     return cloudSyncInFlight;
 };
 
-const pullFromCloud = async ({ clearWhenEmpty = false } = {}) => {
+const pullFromCloud = async () => {
     if (!user.uuid || !authState.token || !authState.isLoggedIn) return false;
     cloudSyncReady = false;
     clearTimeout(window._syncTimer);
@@ -6072,32 +6072,20 @@ const pullFromCloud = async ({ clearWhenEmpty = false } = {}) => {
         }
         const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error((data && data.message) || `Pull failed: ${res.status}`);
-        if (!data) {
-            if (clearWhenEmpty) {
-                await Promise.all([dbReplaceAllSaves([]), dbSaveInvestigators([])]);
-                cocState.investigators = [];
-                tavernState.savedNovels = [];
-                savedGames.value = [];
-                user.name = '无名调查员';
-                user.avatar = '';
-            }
-            cloudSyncRevision = 0;
-            cloudSyncConflict = false;
-            cloudSyncReady = true;
-            return true;
+        const cloudInvestigators = data && Array.isArray(data.investigators) ? data.investigators : [];
+        const cloudSaves = data && Array.isArray(data.saves) ? data.saves : [];
+        const cloudNovels = data && Array.isArray(data.tavern_novels) ? data.tavern_novels : [];
+        const cloudHasData = cloudInvestigators.length > 0 || cloudSaves.length > 0 || cloudNovels.length > 0;
+
+        // 仅当云端确实带有数据时才替换本地集合；空的/缺失的云端记录绝不覆盖本地数据。
+        if (cloudSaves.length > 0) {
+            await dbReplaceAllSaves(cloudSaves);
+        }
+        if (cloudInvestigators.length > 0) {
+            await dbSaveInvestigators(cloudInvestigators);
         }
 
-        const cloudInvestigators = data.investigators;
-        const cloudSaves = data.saves;
-        const cloudNovels = data.tavern_novels;
-        if (!Array.isArray(cloudInvestigators)) throw new TypeError('云端调查员数据格式无效');
-        if (!Array.isArray(cloudSaves)) throw new TypeError('云端存档数据格式无效');
-        if (!Array.isArray(cloudNovels)) throw new TypeError('云端轶闻数据格式无效');
-
-        await dbReplaceAllSaves(cloudSaves);
-        await dbSaveInvestigators(cloudInvestigators);
-
-        if (data.settings) {
+        if (data && data.settings) {
             if (data.settings.name !== undefined) user.name = data.settings.name || '无名调查员';
             if (data.settings.avatar !== undefined) user.avatar = data.settings.avatar || '';
             if (data.settings.api) {
@@ -6117,12 +6105,21 @@ const pullFromCloud = async ({ clearWhenEmpty = false } = {}) => {
                 if (Array.isArray(api.kpRules)) settings.kpRules = syncKpRules(api.kpRules);
             }
         }
-        cocState.investigators = cloudInvestigators;
-        tavernState.savedNovels = cloudNovels;
+        if (cloudInvestigators.length > 0) cocState.investigators = cloudInvestigators;
+        if (cloudNovels.length > 0) tavernState.savedNovels = cloudNovels;
         savedGames.value = await dbGetAllSaves();
-        cloudSyncRevision = Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : 0;
+        cloudSyncRevision = data && Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : 0;
         cloudSyncConflict = false;
         cloudSyncReady = true;
+
+        // 云端没有数据但本地有：以本地为准上传，而不是清空本地。
+        if (!cloudHasData) {
+            const localSaves = await dbGetAllSaves();
+            const localHasData = (cocState.investigators || []).length > 0
+                || (tavernState.savedNovels || []).length > 0
+                || localSaves.length > 0;
+            if (localHasData) syncToCloud();
+        }
         return true;
     } catch(error) {
         console.error('读取失败', error);
@@ -6191,7 +6188,7 @@ const handleAuth = async () => {
             authState.password = '';
 
             showToast(authState.mode === 'register' ? '私有云注册成功！' : '身份验证成功，正在同步云端...', 'success');
-            const pulled = await pullFromCloud({ clearWhenEmpty: currentAction === 'login' });
+            const pulled = await pullFromCloud();
             if (pulled) {
                 saveData({ skipCloud: true });
             } else if (authState.isLoggedIn) {

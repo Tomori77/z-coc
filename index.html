@@ -1862,6 +1862,29 @@
             </div>
         </div>
 
+        <!-- Cloud Sync Conflict Modal -->
+        <div v-if="cloudSyncState.conflict" class="fixed inset-0 z-[2600] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in safe-pt safe-pb">
+            <div class="bg-dark-900 border border-amber-500/50 rounded-xl shadow-[0_0_40px_rgba(212,175,55,0.2)] max-w-md w-full flex flex-col relative overflow-hidden">
+                <div class="p-5 border-b border-dark-800 bg-gradient-to-r from-amber-500/10 to-transparent flex items-center gap-3">
+                    <svg class="w-6 h-6 text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    <h3 class="text-lg font-bold text-amber-400 font-serif">云端同步冲突</h3>
+                </div>
+                <div class="p-6 space-y-4">
+                    <p class="text-sm text-slate-300 font-serif leading-relaxed">云端数据已在其他设备更新，本地也保留了未同步的改动。请选择处理方式：</p>
+                    <div class="space-y-2 text-xs text-slate-400 leading-relaxed">
+                        <p><span class="text-mystic-gold font-bold">保留本地</span>：用本机数据覆盖云端。</p>
+                        <p><span class="text-blue-400 font-bold">合并</span>：按 id 合并双方记录，冲突项保留较新版本。</p>
+                        <p><span class="text-mystic-green font-bold">使用云端</span>：用云端数据覆盖本机（会清除本地未同步改动）。</p>
+                    </div>
+                    <div class="grid grid-cols-1 gap-2 pt-1">
+                        <button @click="resolveConflictKeepLocal" :disabled="cloudSyncState.busy" class="w-full py-2.5 rounded border border-mystic-gold/50 bg-mystic-gold/10 text-mystic-gold font-bold text-sm hover:bg-mystic-gold hover:text-dark-950 transition-all disabled:opacity-50">保留本地（覆盖云端）</button>
+                        <button @click="resolveConflictMerge" :disabled="cloudSyncState.busy" class="w-full py-2.5 rounded border border-blue-500/40 bg-blue-900/15 text-blue-300 font-bold text-sm hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50">合并双方数据</button>
+                        <button @click="resolveConflictUseCloud" :disabled="cloudSyncState.busy" class="w-full py-2.5 rounded border border-mystic-green/40 bg-mystic-green/10 text-mystic-green font-bold text-sm hover:bg-mystic-green/20 transition-all disabled:opacity-50">使用云端（覆盖本地）</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Custom Confirm Modal -->
         <div v-if="confirmState.show" class="fixed inset-0 z-[2000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in safe-pt safe-pb">
             <div class="bg-dark-900 border border-mystic-gold/50 rounded-lg shadow-[0_0_30px_rgba(212,175,55,0.15)] max-w-sm w-full flex flex-col relative overflow-hidden transform transition-all scale-100">
@@ -3093,20 +3116,32 @@
                                 <span>云端节点连接状态</span>
                             </label>
                             
-                            <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="relative">
+                            <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="relative shrink-0">
                                         <div class="w-3 h-3 rounded-full" :class="authState.isLoggedIn ? 'bg-mystic-green animate-pulse' : 'bg-slate-500'"></div>
                                         <div class="absolute inset-0 rounded-full" :class="authState.isLoggedIn ? 'bg-mystic-green animate-ping opacity-50' : ''"></div>
                                     </div>
-                                    <div>
-                                        <div class="text-sm font-bold font-serif" :class="authState.isLoggedIn ? 'text-mystic-green' : 'text-slate-400'">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-bold font-serif truncate" :class="authState.isLoggedIn ? 'text-mystic-green' : 'text-slate-400'">
                                             {{ authState.isLoggedIn ? '已连接云端（自动同步中）' : '离线存储模式（未绑定）' }}
                                         </div>
                                     </div>
                                 </div>
-                                <button v-if="authState.isLoggedIn" @click="handleLogout" class="px-4 py-1.5 bg-red-900/20 text-red-500 border border-red-900/50 rounded hover:bg-red-500 hover:text-white text-xs font-bold transition-all uppercase tracking-wider relative z-10 whitespace-nowrap">断开连接</button>
-                                <button v-else @click="authState.showModal = true; authState.mode = 'login'" class="px-4 py-1.5 bg-mystic-gold/10 text-mystic-gold border border-mystic-gold/50 rounded hover:bg-mystic-gold hover:text-dark-900 text-xs font-bold transition-all shadow-[0_0_10px_rgba(212,175,55,0.2)] uppercase tracking-wider relative z-10 whitespace-nowrap">接入云端</button>
+                                <div class="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                                    <button v-if="authState.isLoggedIn" @click="handleLogout" class="px-3 py-1.5 bg-red-900/20 text-red-500 border border-red-900/50 rounded hover:bg-red-500 hover:text-white text-xs font-bold transition-all uppercase tracking-wider relative z-10 whitespace-nowrap">断开连接</button>
+                                    <button v-else @click="authState.showModal = true; authState.mode = 'login'" class="px-3 py-1.5 bg-mystic-gold/10 text-mystic-gold border border-mystic-gold/50 rounded hover:bg-mystic-gold hover:text-dark-900 text-xs font-bold transition-all shadow-[0_0_10px_rgba(212,175,55,0.2)] uppercase tracking-wider relative z-10 whitespace-nowrap">接入云端</button>
+                                    <button @click="handleManualSync" :disabled="cloudSyncState.busy || (authState.isLoggedIn && !cloudSyncState.ready)" class="px-3 py-1.5 rounded border text-xs font-bold uppercase tracking-wider transition-all relative z-10 whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed" :class="authState.isLoggedIn ? 'bg-mystic-green/10 text-mystic-green border-mystic-green/40 hover:bg-mystic-green/20' : 'bg-dark-800 text-slate-400 border-dark-600 hover:text-slate-200'">{{ cloudSyncState.busy ? '同步中…' : '立即同步' }}</button>
+                                </div>
+                            </div>
+
+                            <!-- 独立同步状态栏 -->
+                            <div class="flex items-center justify-between gap-2 rounded-lg border px-3 py-2 mb-4 text-xs font-mono" :class="cloudSyncStatusClass">
+                                <span class="flex items-center gap-2 min-w-0">
+                                    <span class="w-2 h-2 rounded-full shrink-0" :class="cloudSyncStatusDotClass"></span>
+                                    <span class="truncate">{{ cloudSyncStatusLabel }}</span>
+                                </span>
+                                <span class="opacity-60 shrink-0">{{ authState.isLoggedIn ? ('rev ' + cloudSyncState.revision) : '本地模式' }}</span>
                             </div>
 
                             <div class="flex items-center gap-2">
@@ -3211,7 +3246,6 @@
                                 <svg class="w-4 h-4" :class="modelListStatus.isLoading ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                                 {{ modelListStatus.isLoading ? '正在获取...' : `刷新可用模型${modelListStatus.models.length ? `（${modelListStatus.models.length}）` : ''}` }}
                             </button>
-                            </div>
                             <div>
                                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-widest flex justify-between items-center">
                                     <span>模组上下文上限</span>
@@ -5974,27 +6008,44 @@
                     }
                 };
 
-let cloudSyncRevision = 0;
-let cloudSyncReady = false;
-let cloudSyncConflict = false;
+const cloudSyncState = reactive({
+    revision: (() => { try { const v = Number(localStorage.getItem('coc_sync_revision')); return Number.isSafeInteger(v) && v >= 0 ? v : 0; } catch (e) { return 0; } })(),
+    ready: false,
+    conflict: false,
+    dirty: (() => { try { return localStorage.getItem('coc_sync_dirty') === '1'; } catch (e) { return false; } })(),
+    busy: false,
+    conflictRevision: 0
+});
 let cloudSyncInFlight = null;
 let cloudSyncQueued = false;
 
+const markCloudDirty = () => {
+    cloudSyncState.dirty = true;
+    try { localStorage.setItem('coc_sync_dirty', '1'); } catch (e) {}
+};
+const clearCloudDirty = () => {
+    cloudSyncState.dirty = false;
+    try { localStorage.removeItem('coc_sync_dirty'); } catch (e) {}
+};
+const persistCloudRevision = () => {
+    try { localStorage.setItem('coc_sync_revision', String(cloudSyncState.revision)); } catch (e) {}
+};
+
 const expireCloudSession = () => {
-    cloudSyncReady = false;
+    cloudSyncState.ready = false;
     authState.isLoggedIn = false;
     authState.token = '';
     localStorage.removeItem('coc_auth_token');
     localStorage.setItem('coc_is_logged_in', 'false');
 };
 
-const performCloudSync = async () => {
+const buildSyncPayload = (saves) => {
     const safeApiPresets = (settings.apiPresets || []).map(({ key, ...preset }) => preset);
-    const payload = {
+    return {
         user_id: user.uuid,
-        base_revision: cloudSyncRevision,
+        base_revision: cloudSyncState.revision,
         investigators: cocState.investigators,
-        saves: await dbGetAllSaves(),
+        saves,
         tavern_novels: tavernState.savedNovels,
         settings: {
             name: user.name,
@@ -6013,6 +6064,10 @@ const performCloudSync = async () => {
             }
         }
     };
+};
+
+const performCloudSync = async () => {
+    const payload = buildSyncPayload(await dbGetAllSaves());
     const res = await fetch(window.ZCOC_RUNTIME.apiUrl('db_api.php?action=sync'), {
         method: 'POST',
         headers: {
@@ -6027,40 +6082,61 @@ const performCloudSync = async () => {
         throw new Error('登录已过期');
     }
     if (res.status === 409 || data.status === 'conflict') {
-        cloudSyncConflict = true;
-        throw new Error('云端数据已在其他设备更新，本地改动尚未覆盖云端；请重新登录以拉取最新版本');
+        cloudSyncState.conflict = true;
+        markCloudDirty();
+        cloudSyncState.conflictRevision = Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : cloudSyncState.revision;
+        throw new Error('云端数据已在其他设备更新');
     }
     if (!res.ok || data.status !== 'success') {
         throw new Error(data.message || `Sync failed: ${res.status}`);
     }
-    cloudSyncRevision = Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : cloudSyncRevision + 1;
+    cloudSyncState.revision = Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : cloudSyncState.revision + 1;
+    persistCloudRevision();
 };
 
-const syncToCloud = async () => {
-    if (!user.uuid || !authState.token || !authState.isLoggedIn || !cloudSyncReady || cloudSyncConflict) return;
+const syncToCloud = async (options = {}) => {
+    if (!user.uuid || !authState.token || !authState.isLoggedIn || !cloudSyncState.ready) return;
+    if (cloudSyncState.conflict && options?.force !== true) return;
     if (cloudSyncInFlight) {
         cloudSyncQueued = true;
         return cloudSyncInFlight;
     }
 
     cloudSyncInFlight = (async () => {
-        do {
-            cloudSyncQueued = false;
-            try {
-                await performCloudSync();
-            } catch (error) {
-                console.error('同步失败', error);
-                showToast(error.message || '云端同步失败，本地数据仍已保留', cloudSyncConflict ? 'warning' : 'error');
-                break;
-            }
-        } while (cloudSyncQueued && cloudSyncReady && !cloudSyncConflict);
-    })().finally(() => { cloudSyncInFlight = null; });
+        cloudSyncState.busy = true;
+        try {
+            do {
+                cloudSyncQueued = false;
+                try {
+                    await performCloudSync();
+                } catch (error) {
+                    console.error('同步失败', error);
+                    if (!cloudSyncState.conflict) {
+                        showToast(error.message || '云端同步失败，本地数据仍已保留', 'error');
+                    }
+                    break;
+                }
+            } while (cloudSyncQueued && cloudSyncState.ready && !cloudSyncState.conflict);
+            if (!cloudSyncState.conflict && !cloudSyncQueued) clearCloudDirty();
+        } finally {
+            cloudSyncState.busy = false;
+            cloudSyncInFlight = null;
+        }
+    })();
     return cloudSyncInFlight;
 };
 
-const pullFromCloud = async () => {
+const pullFromCloud = async (options = {}) => {
     if (!user.uuid || !authState.token || !authState.isLoggedIn) return false;
-    cloudSyncReady = false;
+    if (cloudSyncInFlight) {
+        try { await cloudSyncInFlight; } catch (e) {}
+    }
+    const force = options.force === true;
+    // 本地存在未同步改动时先上传，避免被云端静默覆盖。
+    if (cloudSyncState.dirty && !force && cloudSyncState.ready && !cloudSyncState.conflict) {
+        try { await syncToCloud(); } catch (e) {}
+    }
+    cloudSyncState.ready = false;
     clearTimeout(window._syncTimer);
     try {
         const res = await fetch(window.ZCOC_RUNTIME.apiUrl(`db_api.php?action=pull&user_id=${encodeURIComponent(user.uuid)}`), {
@@ -6076,12 +6152,23 @@ const pullFromCloud = async () => {
         const cloudSaves = data && Array.isArray(data.saves) ? data.saves : [];
         const cloudNovels = data && Array.isArray(data.tavern_novels) ? data.tavern_novels : [];
         const cloudHasData = cloudInvestigators.length > 0 || cloudSaves.length > 0 || cloudNovels.length > 0;
+        const serverRevision = data && Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : cloudSyncState.revision;
 
-        // 仅当云端确实带有数据时才替换本地集合；空的/缺失的云端记录绝不覆盖本地数据。
-        if (cloudSaves.length > 0) {
+        // 本地有未同步改动：优先以本地为准上传，绝不静默覆盖本地。
+        // 保留旧 revision 作为乐观锁基准，若云端已前进，服务端将返回 409 并触发冲突解决。
+        if (cloudSyncState.dirty && cloudHasData && !force) {
+            cloudSyncState.ready = true;
+            cloudSyncState.conflictRevision = serverRevision;
+            showToast('检测到本地未同步改动，正在优先上传本地数据…', 'info');
+            syncToCloud();
+            return true;
+        }
+
+        // 仅当云端确实带有数据时才替换本地集合；空的/缺失的云端记录绝不覆盖本地数据（force 时例外）。
+        if (force || cloudSaves.length > 0) {
             await dbReplaceAllSaves(cloudSaves);
         }
-        if (cloudInvestigators.length > 0) {
+        if (force || cloudInvestigators.length > 0) {
             await dbSaveInvestigators(cloudInvestigators);
         }
 
@@ -6105,12 +6192,14 @@ const pullFromCloud = async () => {
                 if (Array.isArray(api.kpRules)) settings.kpRules = syncKpRules(api.kpRules);
             }
         }
-        if (cloudInvestigators.length > 0) cocState.investigators = cloudInvestigators;
-        if (cloudNovels.length > 0) tavernState.savedNovels = cloudNovels;
+        if (force || cloudInvestigators.length > 0) cocState.investigators = cloudInvestigators;
+        if (force || cloudNovels.length > 0) tavernState.savedNovels = cloudNovels;
         savedGames.value = await dbGetAllSaves();
-        cloudSyncRevision = data && Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : 0;
-        cloudSyncConflict = false;
-        cloudSyncReady = true;
+        cloudSyncState.revision = serverRevision;
+        persistCloudRevision();
+        cloudSyncState.conflict = false;
+        cloudSyncState.ready = true;
+        if (force) clearCloudDirty();
 
         // 云端没有数据但本地有：以本地为准上传，而不是清空本地。
         if (!cloudHasData) {
@@ -6126,6 +6215,158 @@ const pullFromCloud = async () => {
         showToast(error.message || '云端数据读取失败，本地数据未被覆盖', 'error');
         return false;
     }
+};
+
+const fetchCloudSnapshot = async () => {
+    const res = await fetch(window.ZCOC_RUNTIME.apiUrl(`db_api.php?action=pull&user_id=${encodeURIComponent(user.uuid)}`), {
+        headers: { 'Authorization': `Bearer ${authState.token}` }
+    });
+    if (res.status === 401) { expireCloudSession(); return null; }
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error((data && data.message) || `Pull failed: ${res.status}`);
+    return data || {};
+};
+
+const mergeCloudCollections = (localList, cloudList, keyOf, timeOf) => {
+    const map = new Map();
+    let anon = 0;
+    const normKey = (item) => {
+        const key = keyOf(item);
+        if (key && key !== 'undefined' && key !== 'null') return key;
+        anon += 1;
+        return `__anon_${anon}`;
+    };
+    (cloudList || []).forEach(item => { if (item) map.set(normKey(item), item); });
+    (localList || []).forEach(item => {
+        if (!item) return;
+        const key = normKey(item);
+        if (!map.has(key)) { map.set(key, item); return; }
+        if ((timeOf(item) || 0) >= (timeOf(map.get(key)) || 0)) map.set(key, item);
+    });
+    return Array.from(map.values());
+};
+
+const resolveConflictKeepLocal = async () => {
+    if (cloudSyncState.busy) return;
+    cloudSyncState.conflict = false;
+    cloudSyncState.revision = cloudSyncState.conflictRevision || cloudSyncState.revision;
+    persistCloudRevision();
+    showToast('正在用本地数据覆盖云端...', 'info');
+    await syncToCloud({ force: true });
+};
+
+const resolveConflictUseCloud = async () => {
+    if (cloudSyncState.busy) return;
+    cloudSyncState.conflict = false;
+    const ok = await pullFromCloud({ force: true });
+    if (!ok) {
+        cloudSyncState.conflict = true;
+        showToast('使用云端失败，本地数据已保留，请重试', 'error');
+        return;
+    }
+    saveData({ skipCloud: true });
+    showToast('已使用云端数据覆盖本地', 'info');
+};
+
+const resolveConflictMerge = async () => {
+    if (cloudSyncState.busy) return;
+    cloudSyncState.busy = true;
+    try {
+        const data = await fetchCloudSnapshot();
+        if (!data) return;
+        const cloudInvestigators = Array.isArray(data.investigators) ? data.investigators : [];
+        const cloudSaves = Array.isArray(data.saves) ? data.saves : [];
+        const cloudNovels = Array.isArray(data.tavern_novels) ? data.tavern_novels : [];
+        const serverRevision = Number.isSafeInteger(Number(data.revision)) ? Number(data.revision) : cloudSyncState.revision;
+        const invKey = (inv) => String(inv.id ?? inv.uuid ?? inv.name ?? '');
+        const invTime = (inv) => Number(inv.updatedAt || inv.updated_at || inv.mtime || inv.timestamp || 0);
+        const saveKey = (s) => String(s.id ?? '');
+        const saveTime = (s) => Number(s.updatedAt || s.timestamp || s.createdAt || 0);
+        const novelKey = (n) => String(n.id ?? n.uuid ?? n.title ?? '');
+        const novelTime = (n) => Number(n.updatedAt || n.createdAt || n.timestamp || 0);
+        const mergedInv = mergeCloudCollections(cocState.investigators, cloudInvestigators, invKey, invTime);
+        const mergedSaves = mergeCloudCollections(savedGames.value, cloudSaves, saveKey, saveTime);
+        const mergedNovels = mergeCloudCollections(tavernState.savedNovels, cloudNovels, novelKey, novelTime);
+        cocState.investigators = mergedInv;
+        tavernState.savedNovels = mergedNovels;
+        savedGames.value = mergedSaves;
+        await dbSaveInvestigators(mergedInv);
+        const validSaves = mergedSaves.every(s => s && (typeof s.id === 'string' ? s.id.trim().length > 0 : (typeof s.id === 'number' && Number.isSafeInteger(s.id) && s.id >= 0)));
+        if (validSaves) await dbReplaceAllSaves(mergedSaves);
+        cloudSyncState.revision = serverRevision;
+        persistCloudRevision();
+        cloudSyncState.conflict = false;
+        showToast(`已合并：调查员 ${mergedInv.length} · 存档 ${mergedSaves.length} · 创作 ${mergedNovels.length}`, 'success');
+        await syncToCloud({ force: true });
+    } catch (e) {
+        console.error('合并失败', e);
+        showToast('合并失败，本地与云端数据均已保留，请重试或选择其他方式', 'error');
+        cloudSyncState.conflict = true;
+    } finally {
+        cloudSyncState.busy = false;
+    }
+};
+
+const flushCloudSyncOnUnload = () => {
+    if (!cloudSyncState.dirty || !authState.isLoggedIn || !user.uuid || !authState.token) return;
+    if (cloudSyncInFlight) return;
+    clearTimeout(window._syncTimer);
+    try {
+        const payload = buildSyncPayload(savedGames.value);
+        fetch(window.ZCOC_RUNTIME.apiUrl('db_api.php?action=sync'), {
+            method: 'POST',
+            keepalive: true,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authState.token}`
+            },
+            body: JSON.stringify(payload)
+        }).catch(() => {});
+    } catch (e) {}
+};
+
+const cloudSyncStatusLabel = Vue.computed(() => {
+    if (!authState.isLoggedIn) return '未登录 · 仅本地保存';
+    if (cloudSyncState.conflict) return '冲突 · 待处理';
+    if (cloudSyncState.busy) return '同步中…';
+    if (!cloudSyncState.ready) return '连接中…';
+    if (cloudSyncState.dirty) return '未同步 · 有本地改动';
+    return '已同步';
+});
+const cloudSyncStatusClass = Vue.computed(() => {
+    if (!authState.isLoggedIn) return 'border-dark-700 bg-dark-900/40 text-slate-500';
+    if (cloudSyncState.conflict) return 'border-amber-500/40 bg-amber-900/10 text-amber-400';
+    if (cloudSyncState.busy) return 'border-blue-500/40 bg-blue-900/10 text-blue-400';
+    if (cloudSyncState.dirty) return 'border-mystic-gold/40 bg-mystic-gold/5 text-mystic-gold';
+    if (!cloudSyncState.ready) return 'border-slate-600/40 bg-dark-900/40 text-slate-400';
+    return 'border-mystic-green/40 bg-mystic-green/5 text-mystic-green';
+});
+const cloudSyncStatusDotClass = Vue.computed(() => {
+    if (!authState.isLoggedIn) return 'bg-slate-500';
+    if (cloudSyncState.conflict) return 'bg-amber-400 animate-pulse';
+    if (cloudSyncState.busy) return 'bg-blue-400 animate-pulse';
+    if (cloudSyncState.dirty) return 'bg-mystic-gold';
+    if (!cloudSyncState.ready) return 'bg-slate-400';
+    return 'bg-mystic-green';
+});
+
+const handleManualSync = async () => {
+    if (!authState.isLoggedIn) {
+        authState.showModal = true;
+        authState.mode = 'login';
+        return;
+    }
+    if (cloudSyncState.conflict) {
+        showToast('请先处理云端同步冲突', 'warning');
+        return;
+    }
+    if (!cloudSyncState.ready) {
+        showToast('正在连接云端，请稍候…', 'info');
+        return;
+    }
+    clearTimeout(window._syncTimer);
+    markCloudDirty();
+    await syncToCloud({ force: true });
 };
 
 const saveData = (options = {}) => {
@@ -6148,6 +6389,7 @@ const saveData = (options = {}) => {
     dbSaveInvestigators(cocState.investigators).catch(e => console.error('Failed to save investigators to IDB', e));
     
     if (options?.skipCloud !== true) {
+        if (authState.isLoggedIn) markCloudDirty();
         clearTimeout(window._syncTimer);
         window._syncTimer = setTimeout(syncToCloud, 2500);
     }
@@ -6167,8 +6409,8 @@ const handleAuth = async () => {
         const result = await response.json().catch(() => ({}));
         if (response.ok && result.status === 'success') {
             clearTimeout(window._syncTimer);
-            cloudSyncReady = false;
-            cloudSyncConflict = false;
+            cloudSyncState.ready = false;
+            cloudSyncState.conflict = false;
             user.uuid = result.user_id;
             authState.token = result.auth_token || '';
             authState.isLoggedIn = true;
@@ -6222,9 +6464,12 @@ const handleAuth = async () => {
                             showToast('服务器暂时不可达，但本机连接已断开', 'warning');
                         }
                     }
-                    cloudSyncReady = false;
-                    cloudSyncConflict = false;
-                    cloudSyncRevision = 0;
+                    cloudSyncState.ready = false;
+                    cloudSyncState.conflict = false;
+                    cloudSyncState.revision = 0;
+                    cloudSyncState.conflictRevision = 0;
+                    clearCloudDirty();
+                    try { localStorage.removeItem('coc_sync_revision'); } catch (e) {}
                     authState.token = '';
                     localStorage.removeItem('coc_auth_token');
                     authState.isLoggedIn = false;
@@ -9484,7 +9729,14 @@ ${buildInvestigatorProfile(inv)}
                     await checkAuth();
                     
                     checkPendingModule();
-                    
+
+                    // 页面卸载/隐藏时尽力冲刷未同步改动，避免 2.5s 防抖窗口内的修改丢失
+                    window.addEventListener('pagehide', flushCloudSyncOnUnload);
+                    window.addEventListener('beforeunload', flushCloudSyncOnUnload);
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'hidden') flushCloudSyncOnUnload();
+                    });
+
                     // App 切回前台时恢复轮询，并向房主补一次状态同步
                     document.addEventListener("visibilitychange", () => {
                         if (document.visibilityState === 'visible') {
@@ -9505,6 +9757,7 @@ ${buildInvestigatorProfile(inv)}
 
                 return {
                     currentView, showMobileMenu, showMobileRightSidebar, showCharacterDrawer, showAllMembers, selectedRoomMemberId, selectedBindingInvestigatorIndex, hasActiveInvestigator, activeInvestigatorName, selectedRoomMember, selectRoomMember, bindPlayerToCharacter, inventoryView, openCharacterDrawer, closeCharacterDrawer, mobileSettingsSection, mobileSettingsGroups, mobileSettingsTitle, openMobileSettingsSection, backMobileSettings, user, settings, toasts, confirmState, authState, handleAuth, handleLogout, showBroadcast, dontShowBroadcast, closeBroadcast,
+                    cloudSyncState, cloudSyncStatusLabel, cloudSyncStatusClass, cloudSyncStatusDotClass, handleManualSync, resolveConflictKeepLocal, resolveConflictUseCloud, resolveConflictMerge,
                     kpRulesByCategory, editingRuleId, toggleRuleEdit, resetRule, addKpRule, deleteKpRule,
                     cocState, cocInput, cocInputRef, cocChatContainer, isGenerating, chatAutoScroll, handleChatScroll, multiplayerState, showJoinInput, joinRoomId, friends, friendRequests, friendInput, normalizeInventoryData,
                     showMentionList, mentionCandidates, handleInput, selectMention, savedGames, savesFilter, groupedSaves, openFolders, toggleFolder, moveSaveToFolder, renameFolder, 

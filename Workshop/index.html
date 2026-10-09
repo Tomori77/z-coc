@@ -682,6 +682,25 @@
                 min-height:36px !important;
             }
             .z-system-ui .toggle { width:34px !important; height:20px !important; min-height:20px !important; }
+            /* 手机端：关闭重合成特效，避免低端 GPU 出现黑块/黑屏 */
+            .z-system-ui .card,
+            .z-system-ui .glass-panel,
+            .z-system-ui .modal-box {
+                backdrop-filter:none !important;
+                -webkit-backdrop-filter:none !important;
+                background:linear-gradient(145deg,rgba(15,24,30,.96),rgba(3,9,13,.97)) !important;
+            }
+            .z-system-ui .modal {
+                backdrop-filter:none !important;
+                -webkit-backdrop-filter:none !important;
+            }
+            .z-system-ui .workshop-header,
+            .z-system-ui .drawer-side > .menu {
+                background:rgba(7,13,18,.97) !important;
+            }
+            .workshop-main > * { animation:none !important; }
+            .workshop-art-banner::before,
+            .workshop-art-banner::after { animation:none !important; }
         }
         @supports (content-visibility:auto) {
             @media(max-width:767px) {
@@ -1274,6 +1293,59 @@
                         <textarea v-model="coc.backstory.phobias" class="textarea textarea-bordered h-20 text-xs bg-dark-900/50 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="恐惧/狂躁"></textarea>
                     </div>
                 </div>
+
+                <!-- Madness & Mythos -->
+                <div>
+                    <label class="label font-bold text-xs uppercase text-slate-500 font-serif">疯狂与神话 Madness &amp; Mythos</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                        <input v-model="coc.mania" type="text" class="input input-bordered input-xs bg-dark-900/50 border-dark-700 text-slate-300 text-sm focus:border-mystic-gold font-serif" placeholder="躁狂症（如：紧张时不停数数）" />
+                        <input v-model="coc.phobia" type="text" class="input input-bordered input-xs bg-dark-900/50 border-dark-700 text-slate-300 text-sm focus:border-mystic-gold font-serif" placeholder="恐惧症（如：幽闭恐惧）" />
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <textarea v-model="coc.mythos.tomes" class="textarea textarea-bordered h-16 text-xs bg-dark-900/50 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="阅读过的神话典籍（持有克苏鲁神话技能时建议填写）"></textarea>
+                    </div>
+                    <!-- 法术条目列表：最多20条，每条字段为 名称/消耗/描述/效果 -->
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="label font-bold text-[11px] uppercase text-slate-500 font-serif py-0">习得法术 Spells</label>
+                            <button @click="coc.mythos.spells.push({ name: '', cost: '', desc: '', effect: '' })" :disabled="coc.mythos.spells.length >= 20" class="btn btn-xs btn-ghost text-mystic-gold hover:bg-mystic-gold/10 font-serif disabled:opacity-40">＋ 添加法术（{{ coc.mythos.spells.length }}/20）</button>
+                        </div>
+                        <!-- 旧版字符串迁移提示 -->
+                        <div v-if="coc.mythos.spellsLegacy" class="mb-2 text-[11px] text-amber-500/90 bg-amber-950/30 border border-amber-800/40 rounded p-2 leading-relaxed">
+                            <div class="font-bold mb-1">旧格式法术文本（请手动拆分为下方条目）：</div>
+                            <div class="whitespace-pre-wrap">{{ coc.mythos.spellsLegacy }}</div>
+                        </div>
+                        <div v-if="coc.mythos.spells.length" class="space-y-2">
+                            <div v-for="(spell, idx) in coc.mythos.spells" :key="idx" class="flex flex-col gap-1.5 p-2.5 rounded bg-dark-900/50 border border-dark-700/60">
+                                <div class="flex gap-1.5">
+                                    <input v-model="spell.name" type="text" class="input input-bordered input-xs flex-1 bg-dark-950/80 border-dark-700 text-slate-200 focus:border-mystic-gold font-serif" placeholder="法术名" />
+                                    <input v-model="spell.cost" type="text" class="input input-bordered input-xs w-40 bg-dark-950/80 border-dark-700 text-slate-200 focus:border-mystic-gold font-serif" placeholder="消耗（如：1d6 SAN）" />
+                                    <button @click="coc.mythos.spells.splice(idx, 1)" class="btn btn-xs btn-ghost btn-square text-slate-500 hover:text-red-400 shrink-0" title="删除法术">×</button>
+                                </div>
+                                <input v-model="spell.desc" type="text" class="input input-bordered input-xs w-full bg-dark-950/80 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="法术描述" />
+                                <input v-model="spell.effect" type="text" class="input input-bordered input-xs w-full bg-dark-950/80 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="法术效果" />
+                            </div>
+                        </div>
+                        <p v-else-if="!coc.mythos.spellsLegacy" class="text-[10px] text-slate-600 font-serif">尚无习得法术</p>
+                    </div>
+                </div>
+
+                <!-- Relationships -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="label font-bold text-xs uppercase text-slate-500 font-serif">人际关系 Bonds</label>
+                        <button @click="coc.relationships.push({ name: '', relation: '', story: '' })" class="btn btn-xs btn-ghost text-mystic-gold hover:bg-mystic-gold/10 font-serif">＋ 添加关系</button>
+                    </div>
+                    <div v-if="coc.relationships && coc.relationships.length" class="space-y-2">
+                        <div v-for="(rel, idx) in coc.relationships" :key="idx" class="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                            <input v-model="rel.name" type="text" class="input input-bordered input-xs md:w-32 bg-dark-900/50 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="角色名" />
+                            <input v-model="rel.relation" type="text" class="input input-bordered input-xs md:w-32 bg-dark-900/50 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="关系" />
+                            <input v-model="rel.story" type="text" class="input input-bordered input-xs flex-1 bg-dark-900/50 border-dark-700 text-slate-300 focus:border-mystic-gold font-serif" placeholder="经历" />
+                            <button @click="coc.relationships.splice(idx, 1)" class="btn btn-xs btn-ghost text-slate-500 hover:text-red-400" title="删除">×</button>
+                        </div>
+                    </div>
+                    <p v-else class="text-[10px] text-slate-600 font-serif">尚无人际关系记录</p>
+                </div>
         </div>
     </div>
 
@@ -1296,7 +1368,7 @@
                              class="flex flex-col items-center group w-14 animate-fade-in relative z-10">
                             <div class="z-medallion relative w-12 h-12 flex items-center justify-center bg-gradient-to-b from-dark-800 to-dark-900 rounded-full border border-mystic-gold/40 cursor-help shadow-lg hover:bg-dark-700 transition-colors shrink-0 z-20">
                                 <div class="w-7 h-7 text-mystic-gold/90 drop-shadow-[0_0_5px_rgba(212,175,55,0.6)] medal-icon">
-                                    <span v-if="badge.icon && badge.icon.startsWith('<svg')" class="text-xl select-none">馃弲</span>
+                                    <span v-if="badge.icon && badge.icon.startsWith('<svg')" class="w-full h-full select-none" v-html="badge.icon"></span>
                                     <span v-else class="text-xl select-none">{{ badge.icon || '🏅' }}</span>
                                 </div>
                                 <!-- Tooltip -->
@@ -2104,9 +2176,14 @@
                 },
                 mythos: {
                     tomes: '',
-                    spells: '',
+                    // spells 条目化：每项 { name, cost, desc, effect }；旧版为纯字符串，迁移时落到 spellsLegacy
+                    spells: [],
+                    spellsLegacy: '',
                     encounters: ''
                 },
+                mania: '',
+                phobia: '',
+                relationships: [],
                 weapons: [],
                 history: [], // [{ date: '2023-01-01', content: '...' }]
                 badges: []   // [{ name: '...', desc: '...', icon: '🏅', date: '...' }]
@@ -2208,6 +2285,25 @@
                             coc.status = { majorWound: false, unconscious: false, dead: false, tempInsanity: false, indefInsanity: false, permInsanity: false };
                         }
 
+                        // 兼容缺少疯狂/神话/人际关系栏位的旧角色卡
+                        // 必须以载入数据 loadedCoc 判空：Object.assign 不会清除旧卡缺失的键，
+                        // 若检查 coc.* 会把上一张卡的残留值误保留到当前卡（"跟随账号"问题根源）
+                        // 法术条目迁移：旧版 spells 为字符串 → 转 spellsLegacy 供手动拆分，新结构为条目数组
+                        if (loadedCoc.mythos) {
+                            if (typeof loadedCoc.mythos.spells === 'string' && loadedCoc.mythos.spells.trim()) {
+                                coc.mythos.spellsLegacy = loadedCoc.mythos.spells;
+                                coc.mythos.spells = [];
+                            } else if (!Array.isArray(coc.mythos.spells)) {
+                                coc.mythos.spells = [];
+                            }
+                            if (coc.mythos.spellsLegacy === undefined) coc.mythos.spellsLegacy = '';
+                        } else {
+                            coc.mythos = { tomes: '', spells: [], spellsLegacy: '', encounters: '' };
+                        }
+                        if (loadedCoc.mania === undefined) coc.mania = '';
+                        if (loadedCoc.phobia === undefined) coc.phobia = '';
+                        if (!Array.isArray(loadedCoc.relationships)) coc.relationships = [];
+
                         // COC 数据缺少头像时从角色根对象补充
                         if (!coc.avatar && char.avatar) {
                             coc.avatar = char.avatar;
@@ -2243,7 +2339,7 @@
                             jobSkillsCustom: [],
                             inventory: '', inventory_gear: '', inventory_key: '', assets: '', cash: '', creditRating: 0,
                             backstory: { personalDescription: '', ideology: '', significantPeople: '', meaningfulLocations: '', treasuredPossessions: '', traits: '', injuries: '', phobias: '' },
-                            mythos: { tomes: '', spells: '', encounters: '' }, weapons: [],
+                            mythos: { tomes: '', spells: [], spellsLegacy: '', encounters: '' }, mania: '', phobia: '', relationships: [], weapons: [],
                             history: [],
                             badges: [],
                             era: '1920s'
@@ -2364,7 +2460,21 @@
                             if (!coc.history) coc.history = [];
                             coc.history.unshift(`[${new Date().toISOString().slice(0,10)}] 完成模组《${report.moduleName}》: ${report.summary}`);
                         }
-                        
+
+                        // 6. 日谈：人物关系合并（同名更新、不同名追加、绝不删减）
+                        if (Array.isArray(report.relationships) && report.relationships.length) {
+                            if (!Array.isArray(coc.relationships)) coc.relationships = [];
+                            report.relationships.filter(r => r && r.name).forEach(r => {
+                                const existing = coc.relationships.find(x => x.name === r.name);
+                                if (existing) {
+                                    if (r.relation) existing.relation = r.relation;
+                                    if (r.story) existing.story = existing.story ? `${existing.story}；${r.story}` : r.story;
+                                } else {
+                                    coc.relationships.push({ name: r.name, relation: r.relation || '', story: r.story || '' });
+                                }
+                            });
+                        }
+
                         showToast(`调查凭证已归档：${report.moduleName}`, 'success');
                     } catch (err) {
                         console.error(err);
@@ -3661,18 +3771,33 @@ const validateStatBlur = (key) => {
                 coc.maxMp = Math.floor(stats.POW / 5);
                 coc.mp = coc.maxMp;
                 coc.san = stats.POW;
-                coc.maxSan = 99;
+                // 理智上限 = 99 − 克苏鲁神话技能值（COC 7版）
+                const mythosSkill = coc.skills.find(s => s.name === '克苏鲁神话');
+                coc.maxSan = 99 - (parseInt(mythosSkill && mythosSkill.value) || 0);
+                if (Number(coc.san) > coc.maxSan) coc.san = coc.maxSan;
                 coc.skills.forEach(s => {
                     if (s.name === '闪避') s.value = Math.floor(stats.DEX / 2);
                     if (s.name === '母语') s.value = stats.EDU;
                 });
             };
 
-            watch(() => coc.stats, () => {
+            watch(() => coc.stats, (newStats, oldStats) => {
+                // 仅用户手动修改属性（同对象原地变更）时才重算派生值；
+                // 载入/切换角色会整体替换 stats 对象，此时跳过，避免闪避/母语加点与 HP/MP/SAN 被重置
+                if (newStats !== oldStats) return;
                 if (cocGenMode.value === 'pointBuy') {
                     recalcDerivedStats();
                 }
             }, { deep: true });
+
+            // 克苏鲁神话技能值变化 → 实时联动理智上限（99 − 神话值），当前理智超限自动下调；持有神话技能而典籍为空时提醒
+            watch(() => coc.skills.find(s => s.name === '克苏鲁神话')?.value || 0, (mythosVal, oldVal) => {
+                coc.maxSan = 99 - (parseInt(mythosVal) || 0);
+                if (Number(coc.san) > coc.maxSan) coc.san = coc.maxSan;
+                if (mythosVal > 0 && (oldVal === undefined || mythosVal > oldVal) && !String(coc.mythos?.tomes || '').trim()) {
+                    showToast('该角色已持有克苏鲁神话技能，建议在"疯狂与神话"栏位填写阅读过的典籍', 'warning');
+                }
+            });
 
             const randomizeCocStats = () => {
                 const roll = (n, s) => {
@@ -3886,6 +4011,12 @@ JSON 结构如下：
                             }
                         });
                     }
+
+                    // AI 生成的是全新角色：清空上一张卡残留的疯狂/神话/人际关系数据，避免跟随编辑现场而非角色卡
+                    coc.mania = '';
+                    coc.phobia = '';
+                    coc.mythos = { tomes: '', spells: [], spellsLegacy: '', encounters: '' };
+                    coc.relationships = [];
 
                     // Backstory
                     coc.backstory.personalDescription = result.personalDescription || coc.backstory.personalDescription;

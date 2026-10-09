@@ -12,6 +12,10 @@ tailwind.config.js
 assets/css/tailwind.input.css
 
 config.local.php
+.env
+.env.*
+!.env.example
+docker-compose.yml
 *-claimed-*.json
 *.cpa.*.json
 

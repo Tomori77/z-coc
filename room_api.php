@@ -58,7 +58,7 @@ function ensure_room_schema($conn) {
         }
     }
 
-    return (bool)$conn->query("CREATE TABLE IF NOT EXISTS coc_room_messages (
+    $messagesReady = (bool)$conn->query("CREATE TABLE IF NOT EXISTS coc_room_messages (
         id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         room_id VARCHAR(32) NOT NULL,
         sender_id VARCHAR(64) NOT NULL,
@@ -68,13 +68,23 @@ function ensure_room_schema($conn) {
         KEY idx_room_id_id (room_id, id),
         KEY idx_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    if (!$messagesReady) return false;
+
+    // 在线状态表：玩家轮询时登记最后在线时间，供房主判定掉线/踢出
+    return (bool)$conn->query("CREATE TABLE IF NOT EXISTS coc_room_presence (
+        room_id VARCHAR(32) NOT NULL,
+        user_id VARCHAR(64) NOT NULL,
+        last_seen TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        PRIMARY KEY (room_id, user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 }
 
 function cleanup_rooms($conn, $ttlHours) {
     $ttl = max(1, (int)$ttlHours);
     $messagesCleaned = $conn->query("DELETE m FROM coc_room_messages m LEFT JOIN coc_rooms r ON r.room_id = m.room_id WHERE r.room_id IS NULL OR m.created_at < (NOW() - INTERVAL {$ttl} HOUR)");
     $roomsCleaned = $conn->query("DELETE FROM coc_rooms WHERE updated_at < (NOW() - INTERVAL {$ttl} HOUR)");
-    return $messagesCleaned !== false && $roomsCleaned !== false;
+    $presenceCleaned = $conn->query("DELETE p FROM coc_room_presence p LEFT JOIN coc_rooms r ON r.room_id = p.room_id WHERE r.room_id IS NULL");
+    return $messagesCleaned !== false && $roomsCleaned !== false && $presenceCleaned !== false;
 }
 
 function prune_room_messages($conn, $roomId, $maxMessages) {
@@ -127,6 +137,8 @@ function is_host_only_message($type) {
         'generating_end' => true,
         'regenerate_start' => true,
         'distribute_reports' => true,
+        'kick_player' => true,
+        'move_to_spectator' => true,
     ];
     return isset($hostOnlyTypes[$type]);
 }
@@ -271,9 +283,26 @@ if ($action === 'pull') {
             'payload' => json_decode($row['payload'], true),
         ];
     }
+
+    // 在线状态：登记本次轮询者，并返回房间内全部成员的最后在线时间（供房主判定掉线）
+    $presenceUser = trim((string)($_GET['user_id'] ?? ''));
+    if ($presenceUser !== '' && preg_match('/^[a-zA-Z0-9_-]+$/', $presenceUser) && strlen($presenceUser) <= 64) {
+        $stmt = $conn->prepare("REPLACE INTO coc_room_presence (room_id, user_id, last_seen) VALUES (?, ?, NOW())");
+        $stmt->bind_param('ss', $roomId, $presenceUser);
+        $stmt->execute();
+    }
+
+    $presence = [];
+    $stmt = $conn->prepare("SELECT user_id, UNIX_TIMESTAMP(last_seen) AS seen_at FROM coc_room_presence WHERE room_id = ?");
+    $stmt->bind_param('s', $roomId);
+    $stmt->execute();
+    foreach (app_stmt_fetch_all_assoc($stmt) as $row) {
+        $presence[] = ['user_id' => $row['user_id'], 'seen_at' => (int)$row['seen_at']];
+    }
+
     touch_room($conn, $roomId);
 
-    respond(['status' => 'success', 'messages' => $messages]);
+    respond(['status' => 'success', 'messages' => $messages, 'presence' => $presence, 'now' => time()]);
 }
 
 respond(['status' => 'error', 'message' => 'Unknown action'], 404);

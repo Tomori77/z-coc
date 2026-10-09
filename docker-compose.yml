@@ -1,0 +1,44 @@
+# z-coc 应用容器编排（外接现有 MySQL 模式）
+#
+# 本编排只管理应用容器，MySQL 继续使用你现有容器，不新建数据库、不迁移数据。
+#
+# 首次使用（一次性）：
+#   1. docker network create zcoc-net
+#   2. docker network connect zcoc-net <现有MySQL容器名>
+#   3. cp .env.example .env，填写 MYSQL_HOST=现有MySQL容器名 及账号密码
+#   4. 停掉旧应用容器释放端口：docker stop <旧app容器> && docker rm <旧app容器>
+#   5. docker compose up -d --build
+#   6. curl http://127.0.0.1:8080/health.php 应返回 {"status":"ok"}
+#
+# 日常更新应用（MySQL 与数据不受影响，秒级切换）：
+#   1. 备份：docker exec <MySQL容器名> sh -c 'exec mysqldump -u<用户> -p"<密码>" <库名>' > backup_$(date +%F).sql
+#   2. 同步新的项目目录到服务器后：docker compose up -d --build
+#   3. curl -f http://127.0.0.1:8080/health.php
+#
+# 备选连法（MySQL 仅映射宿主机端口、不想用共享网络时）：
+#   取消下方 extra_hosts 注释，.env 中改 MYSQL_HOST=host.docker.internal
+
+services:
+  app:
+    build: .
+    container_name: z-coc-app
+    restart: unless-stopped
+    networks:
+      - zcoc-net
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST:?请在 .env 中指定现有 MySQL 容器名}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USERNAME: ${MYSQL_USERNAME:?请在 .env 中填写数据库用户}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中填写数据库密码}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?请在 .env 中填写库名}
+      # 仅当网页与 PHP API 跨域部署时才配置（逗号分隔的完整 Origin，禁止 *）
+      # APP_ALLOWED_ORIGINS: https://your-domain,https://localhost
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+networks:
+  zcoc-net:
+    external: true
+    name: ${DOCKER_NETWORK:-zcoc-net}

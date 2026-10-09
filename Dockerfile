@@ -1,6 +1,9 @@
 FROM php:8.3-apache-bookworm
 
-RUN docker-php-ext-install mysqli \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install pdo_pgsql \
+    && rm -rf /var/lib/apt/lists/* \
     && a2enmod headers rewrite deflate expires \
     && a2dissite 000-default
 

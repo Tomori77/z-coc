@@ -167,7 +167,7 @@ z-coc/
 库名 `CocTrpgDB`，版本 `3`，object store：`saves` / `investigators` / `audio_assets`。
 封装函数在 `index.html:4474–4638`（模块作用域，Vue 之外）。
 
-### 5.4 MySQL 表（全部由 PHP 内联 `CREATE TABLE IF NOT EXISTS` 自动创建/升级，无 SQL 迁移文件）
+### 5.4 PostgreSQL 表（全部由 PHP 内联 `CREATE TABLE IF NOT EXISTS` 自动创建，无 SQL 迁移文件）
 
 | 表 | 用途 | 定义位置 |
 |---|---|---|
@@ -177,9 +177,9 @@ z-coc/
 | `coc_room_messages` | 房间消息（payload JSON） | `room_api.php` |
 | `coc_room_presence` | 在线状态 | `room_api.php` |
 | `coc_library_modules` | 模组库 | `library_api.php` |
-| `api_rate_limits` | 限流桶 | `api_bootstrap.php` |
+| `api_rate_limits` | 限流桶 | `lib/RateLimit.php` |
 
-数据库账号首次部署需 `CREATE`/`ALTER`/`INDEX` 权限。
+数据库账号首次部署需 `CREATE`（含 `CREATE INDEX`）权限。
 
 ### 5.5 认证模型（三套独立，均 token + sha256 存储，无 PHP session）
 
@@ -221,9 +221,10 @@ z-coc/
 - 所有网络地址一律经 `ZCOC_RUNTIME.apiUrl(...)`，勿硬编码域名。
 
 ### 7.2 后端
-- 每个入口固定头部：`require api_bootstrap.php` → `app_send_cors_headers()` → `app_db()` → 读 `$_GET['action']` → `switch` 分发 → 404 兜底。
+- `api_bootstrap.php` 仅作为薄加载器，按序 `require_once` `lib/` 下的 `Config`、`Http`、`Database`、`Validation`、`Scheduler`、`RateLimit`；全局函数名保持 `app_*`。
+- 数据库为 PostgreSQL（PDO `pgsql`）。入口头部：`require api_bootstrap.php` → `app_send_cors_headers()` → `app_db()`（或 `app_query` / `app_fetch_one` / `app_fetch_all` / `app_execute`）→ 读 `$_GET['action']` → 分发 → 404 兜底。
 - 响应统一用 `app_json_response()`；读 body 用 `app_read_json_body()`；限流用 `app_rate_limit()`。
-- 新增表/列：写在对应 `ensure_*_schema()`，用 `INFORMATION_SCHEMA` 判断后再 `ALTER`，保持幂等。
+- 新增表/列：写在对应 `ensure_*_schema()` / `library_ensure_schema()`，用 `CREATE TABLE IF NOT EXISTS` 与 `CREATE INDEX IF NOT EXISTS`，保持幂等；不再使用 `INFORMATION_SCHEMA` 升级列。
 - 用户输入一律经校验函数（`app_normalize_user_id` / `library_text` 等）；token 只存 sha256。
 - 错误消息当前中英混用，新增请统一为「前端可见中文 + 日志英文」。
 
@@ -250,7 +251,7 @@ pnpm mobile:build:debug # 完整 debug APK → android/app/build/outputs/apk/deb
 
 ### 8.2 部署
 - Docker：`php:8.3-apache-bookworm`，Apache 监听 **8080**，文档根 `/var/www/html`，`AllowOverride All`（`.htaccess` 生效），健康检查 `/health.php`。
-- Zeabur：一个项目 = MySQL 8 服务 + 从 GitHub 部署的网站服务；网站读注入的 `MYSQL_*`（也兼容 `DB_*`），**环境变量优先于配置文件**。
+- Zeabur：一个项目 = PostgreSQL 服务 + 从 GitHub 部署的网站服务；网站读注入的 `PGSQL_*`（也兼容 `DB_*` 与 `DATABASE_URL`），**环境变量优先于配置文件**。
 - 同域部署**不要**设 `APP_ALLOWED_ORIGINS`；跨域/原生端才设，值为逗号分隔完整 Origin，**禁用 `*`**。
 - 关键提醒：Docker 构建**不**编译 CSS，故 `assets/css/tailwind.css` 必须预先构建并提交，否则线上样式丢失。
 

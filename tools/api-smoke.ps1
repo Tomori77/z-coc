@@ -51,6 +51,10 @@ function Invoke-Api {
         $content = $null
         if ($_.Exception.Response) {
             $status = [int]$_.Exception.Response.StatusCode
+        }
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+            $content = $_.ErrorDetails.Message
+        } elseif ($_.Exception.Response) {
             try {
                 $stream = $_.Exception.Response.GetResponseStream()
                 $reader = New-Object System.IO.StreamReader($stream)

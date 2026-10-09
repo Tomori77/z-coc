@@ -1,8 +1,9 @@
 <?php
 return [
     'db' => [
+        'driver' => 'pgsql',
         'host' => 'localhost',
-        'port' => 3306,
+        'port' => 5432,
         'user' => 'your_database_user',
         'password' => 'your_database_password',
         'database' => 'your_database_name',

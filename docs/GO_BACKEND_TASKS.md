@@ -8,35 +8,35 @@
 
 ## Phase 0 — 基线固化（前置）
 
-- [ ] 0.1 打 tag 记录当前 PHP 版本
-- [ ] 0.2 跑通 `tools/api-smoke.ps1`，记录 **27/27** 基线
+- [x] 0.1 打 tag 记录当前 PHP 版本
+- [x] 0.2 跑通 `tools/api-smoke.ps1`，记录 **27/27** 基线
 - **验收**：smoke 全绿、tag 已打。
 
 ## Phase 1 — Go 实现同一 API 契约（对同一 Postgres）
 
 ### 骨架与公共层
-- [ ] 1.1 初始化 Go module（`go.mod`，确定 module path）
-- [ ] 1.2 建目录骨架 `cmd/server` + `internal/*`
-- [ ] 1.3 `internal/config`：`PGSQL_*` / `DB_*` / `DATABASE_URL` / `APP_ALLOWED_ORIGINS` / `APP_PORT`（复刻 `lib/Config.php` 优先级）
-- [ ] 1.4 `internal/store/pool`（`pgxpool`）+ `schema.go`（复刻现有表，`CREATE TABLE IF NOT EXISTS`）
-- [ ] 1.5 `internal/httpapi/respond`（JSON 信封）+ `middleware`（CORS、方法、body 上限、日志、recover）
-- [ ] 1.6 `internal/ratelimit`：固定窗口，复刻 `api_rate_limits` 语义与各 scope
-- [ ] 1.7 `internal/validate`：`user_id` / `room_id` / `owner_token` 校验
-- [ ] 1.8 `internal/auth`：bcrypt 校验（兼容 `$2y$`）、token 生成 + sha256、Bearer 解析
+- [x] 1.1 初始化 Go module（`go.mod`，确定 module path）
+- [x] 1.2 建目录骨架 `cmd/server` + `internal/*`
+- [x] 1.3 `internal/config`：`PGSQL_*` / `DB_*` / `DATABASE_URL` / `APP_ALLOWED_ORIGINS` / `APP_PORT`（复刻 `lib/Config.php` 优先级）
+- [x] 1.4 `internal/store/pool`（`pgxpool`）+ `schema.go`（复刻现有表，`CREATE TABLE IF NOT EXISTS`）
+- [x] 1.5 `internal/httpapi/respond`（JSON 信封）+ `middleware`（CORS、方法、body 上限、日志、recover）
+- [x] 1.6 `internal/ratelimit`：固定窗口，复刻 `api_rate_limits` 语义与各 scope
+- [x] 1.7 `internal/validate`：`user_id` / `room_id` / `owner_token` 校验
+- [x] 1.8 `internal/auth`：bcrypt 校验（兼容 `$2y$`）、token 生成 + sha256、Bearer 解析
 
 ### 接口实现（严格对齐 `GO_BACKEND_PLAN.md` §4）
-- [ ] 1.9 `db_api`：register / login / pull / sync / logout
+- [x] 1.9 `db_api`：register / login / pull / sync / logout
   - 含 `pull` 裸 `null`、`sync` 409 乐观锁、`settings` 脱敏
-- [ ] 1.10 `room_api`：create / join / push / pull
+- [x] 1.10 `room_api`：create / join / push / pull
   - 含 18 类主机白名单、`HOST_AUTH_FAILED`、presence、TTL、消息裁剪
-- [ ] 1.11 `library_api`：list / detail / create / delete / increment_downloads
+- [x] 1.11 `library_api`：list / detail / create / delete / increment_downloads
   - 含 type 白名单、`content_length`、私有模组鉴权
-- [ ] 1.12 `health` + `dl/download`
+- [x] 1.12 `health` + `dl/download`
   - 注意 `dl/download` 读**表单** `data`（`application/x-www-form-urlencoded`），非 JSON
 
 ### 部署与验收
-- [ ] 1.13 多阶段 `Dockerfile`；与旧 PHP 服务**并行**部署对照
-- [ ] 1.14 验收：smoke **27/27**、老账号 bcrypt 互通、跨设备云存档
+- [x] 1.13 多阶段 `Dockerfile`；与旧 PHP 服务**并行**部署对照
+- [x] 1.14 验收：smoke **27/27**、老账号 bcrypt 互通、跨设备云存档
 - **验收**：`tools/api-smoke.ps1` 对 Go 服务 27/27；同一账号在 PHP 与 Go 间可互相登录。
 
 ## Phase 2 — Go 同时托管静态，替换镜像
@@ -90,8 +90,8 @@
 
 | 阶段 | 状态 | 负责 | 备注 |
 |---|---|---|---|
-| Phase 0 基线 | 未开始 | | |
-| Phase 1 Go API | 未开始 | | |
+| Phase 0 基线 | 完成 | | baseline tag + smoke 27/27 |
+| Phase 1 Go API | 完成 | | Go 服务，smoke 27/27（e4beb80） |
 | Phase 2 静态托管 | 未开始 | | |
 | Phase 3 WebSocket | 未开始 | | |
 | Phase 4 路线图 | 未开始 | | |

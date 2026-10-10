@@ -283,6 +283,7 @@ pnpm mobile:build:debug # 完整 debug APK → android/app/build/outputs/apk/deb
 |---|---|
 | `docs/SPLIT_PLAN.md` | 模块拆分/重构任务清单 |
 | `docs/GO_BACKEND_PLAN.md` | 后端 Go 化：技术选型 + 迁移计划 + 后续需求路线图 |
+| `docs/GO_BACKEND_TASKS.md` | Go 后端实现任务清单（可勾选跟踪） |
 | `docs/FRIENDS_FEATURE_TASK.md` | 好友功能设计（挂起，待实现） |
 | `DEPLOY_ZEABUR.md` | Zeabur 部署步骤与上线检查 |
 | `MOBILE_APP.md` | 移动端构建环境与命令 |

@@ -44,6 +44,7 @@ z-coc（Zarkto's Table）是一个**《克苏鲁的呼唤》(CoC) TRPG 跑团辅
 | 数据库表结构 | 各 `*_api.php` 内的 `ensure_*_schema()`（无独立 SQL 文件） |
 | 部署 / 环境变量 | `Dockerfile`、`docker/`、`docker-compose.yml`、`DEPLOY_ZEABUR.md` |
 | 安全约定 | `SECURITY_NOTES.md`、`.htaccess` |
+| 后端 Go 化 / 迁移方案 | `docs/GO_BACKEND_PLAN.md` |
 
 ---
 
@@ -281,6 +282,8 @@ pnpm mobile:build:debug # 完整 debug APK → android/app/build/outputs/apk/deb
 | 文件 | 内容 |
 |---|---|
 | `docs/SPLIT_PLAN.md` | 模块拆分/重构任务清单 |
+| `docs/GO_BACKEND_PLAN.md` | 后端 Go 化：技术选型 + 迁移计划 + 后续需求路线图 |
+| `docs/FRIENDS_FEATURE_TASK.md` | 好友功能设计（挂起，待实现） |
 | `DEPLOY_ZEABUR.md` | Zeabur 部署步骤与上线检查 |
 | `MOBILE_APP.md` | 移动端构建环境与命令 |
 | `SECURITY_NOTES.md` | 安全约定 |

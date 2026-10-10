@@ -9,6 +9,10 @@ config.local.php
 node_modules/
 www/
 
+# Go build output (source lives in cmd/ and internal/).
+/z-coc
+/z-coc.exe
+
 # Local image-generation intermediates and source masters are not deployment assets.
 tmp/
 assets/art/**/*.png
